@@ -1,0 +1,45 @@
+name: Build DW1560 BlueToolFixup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout experimental BrcmPatchRAM
+        uses: actions/checkout@v4
+
+      - name: Checkout MacKernelSDK
+        uses: actions/checkout@v4
+        with:
+          repository: acidanthera/MacKernelSDK
+          path: MacKernelSDK
+
+      - name: CI Bootstrap
+        run: |
+          src=$(/usr/bin/curl -Lfs https://raw.githubusercontent.com/acidanthera/ocbuild/master/ci-bootstrap.sh)
+          eval "$src"
+
+      - name: Build Release
+        run: |
+          xcodebuild -jobs 1 -arch x86_64 -configuration Release
+
+      - name: Find built files
+        run: |
+          find build -type d -name "BlueToolFixup.kext" -print
+          find build -type f -name "*.zip" -print
+
+      - name: Package BlueToolFixup
+        run: |
+          mkdir -p artifact
+          KEXT="$(find build -type d -name BlueToolFixup.kext | head -1)"
+          test -n "$KEXT"
+          cp -R "$KEXT" artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DW1560-BlueToolFixup
+          path: artifact/
